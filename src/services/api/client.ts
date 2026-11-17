@@ -1,5 +1,6 @@
 export type ApiErrorPayload = {
   error?: string
+  mensaje?: string
   code?: string
   fields?: Record<string, string>
 }
@@ -54,7 +55,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       ? payload as ApiErrorPayload
       : undefined
     throw new ApiError(
-      errorPayload?.error ?? `Request failed with status ${response.status}.`,
+      errorPayload?.error ?? errorPayload?.mensaje ?? `La solicitud falló (HTTP ${response.status}).`,
       response.status,
       errorPayload?.code,
       errorPayload?.fields,

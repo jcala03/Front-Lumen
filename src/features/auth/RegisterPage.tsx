@@ -5,8 +5,6 @@ import { FormError } from '../../components/ui/FormError'
 import { FormField } from '../../components/ui/FormField'
 import { Input } from '../../components/ui/Input'
 import { PasswordInput } from '../../components/ui/PasswordInput'
-import { Select } from '../../components/ui/Select'
-import { Textarea } from '../../components/ui/Textarea'
 import { ApiError } from '../../services/api/client'
 import type { RegisterRequest } from '../../types/auth'
 import { useSession } from './useSession'
@@ -19,12 +17,6 @@ const initialValues: RegisterFormValues = {
   apellido: '',
   correo: '',
   password: '',
-  telefono: '',
-  ciudad: '',
-  nivel_educativo: '',
-  institucion: '',
-  biografia: '',
-  tarifa_hora_base: '',
 }
 
 export function RegisterPage() {
@@ -58,7 +50,7 @@ export function RegisterPage() {
     event.preventDefault()
     if (!role) return
 
-    const nextErrors = validateRegister(values, role)
+    const nextErrors = validateRegister(values)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       return
@@ -70,33 +62,16 @@ export function RegisterPage() {
       correo: values.correo.trim(),
       password: values.password,
       rol: role,
-      ...(values.telefono.trim() ? { telefono: values.telefono.trim() } : {}),
-      ...(values.ciudad.trim() ? { ciudad: values.ciudad.trim() } : {}),
-      ...(role === 'estudiante' && values.nivel_educativo
-        ? { nivel_educativo: values.nivel_educativo }
-        : {}),
-      ...(role === 'estudiante' && values.institucion.trim()
-        ? { institucion: values.institucion.trim() }
-        : {}),
-      ...(role === 'tutor' && values.biografia.trim()
-        ? { biografia: values.biografia.trim() }
-        : {}),
-      ...(role === 'tutor' && values.tarifa_hora_base.trim()
-        ? { tarifa_hora_base: Number(values.tarifa_hora_base) }
-        : {}),
     }
 
     setFormError('')
     setServerFieldErrors({})
     try {
       await signUp(payload)
-      navigate('/', { replace: true })
+      navigate('/login', { replace: true, state: { registeredEmail: payload.correo } })
     } catch (error) {
       if (error instanceof ApiError) {
-        const allowedFields = new Set<RegisterField>([
-          'nombre', 'apellido', 'correo', 'password', 'telefono', 'ciudad',
-          'nivel_educativo', 'institucion', 'biografia', 'tarifa_hora_base',
-        ])
+        const allowedFields = new Set(Object.keys(initialValues))
         const fieldErrors = Object.fromEntries(
           Object.entries(error.fields ?? {}).filter(
             ([field]) => allowedFields.has(field as RegisterField),
@@ -203,96 +178,10 @@ export function RegisterPage() {
                 />
               </FormField>
 
-              <div className="form-grid">
-                <FormField id="register-telefono" label="Teléfono" optional error={errors.telefono ?? serverFieldErrors.telefono}>
-                  <Input
-                    id="register-telefono"
-                    name="telefono"
-                    type="tel"
-                    autoComplete="tel"
-                    placeholder="Tu teléfono"
-                    value={values.telefono}
-                    error={Boolean(errors.telefono ?? serverFieldErrors.telefono)}
-                    onChange={(event) => updateField('telefono', event.target.value)}
-                  />
-                </FormField>
-                <FormField id="register-ciudad" label="Ciudad" optional error={errors.ciudad ?? serverFieldErrors.ciudad}>
-                  <Input
-                    id="register-ciudad"
-                    name="ciudad"
-                    autoComplete="address-level2"
-                    placeholder="Tu ciudad"
-                    value={values.ciudad}
-                    error={Boolean(errors.ciudad ?? serverFieldErrors.ciudad)}
-                    onChange={(event) => updateField('ciudad', event.target.value)}
-                  />
-                </FormField>
-              </div>
-
-              {role === 'estudiante' ? (
-                <div className="form-grid">
-                  <FormField id="register-nivel" label="Nivel educativo" optional error={errors.nivel_educativo ?? serverFieldErrors.nivel_educativo}>
-                    <Select
-                      id="register-nivel"
-                      name="nivel_educativo"
-                      value={values.nivel_educativo}
-                      error={Boolean(errors.nivel_educativo ?? serverFieldErrors.nivel_educativo)}
-                      onChange={(event) => updateField('nivel_educativo', event.target.value)}
-                    >
-                      <option value="">Selecciona tu nivel</option>
-                      <option value="pregrado">Pregrado</option>
-                    </Select>
-                  </FormField>
-                  <FormField id="register-institucion" label="Institución" optional error={errors.institucion ?? serverFieldErrors.institucion}>
-                    <Input
-                      id="register-institucion"
-                      name="institucion"
-                      autoComplete="organization"
-                      placeholder="Tu institución"
-                      value={values.institucion}
-                      error={Boolean(errors.institucion ?? serverFieldErrors.institucion)}
-                      onChange={(event) => updateField('institucion', event.target.value)}
-                    />
-                  </FormField>
-                </div>
-              ) : (
-                <>
-                  <FormField id="register-biografia" label="Biografía" optional hint="Cuéntanos brevemente qué te gustaría enseñar." error={errors.biografia ?? serverFieldErrors.biografia}>
-                    <Textarea
-                      id="register-biografia"
-                      name="biografia"
-                      rows={4}
-                      placeholder="Comparte un poco sobre tu experiencia e intereses"
-                      value={values.biografia}
-                      error={Boolean(errors.biografia ?? serverFieldErrors.biografia)}
-                      onChange={(event) => updateField('biografia', event.target.value)}
-                    />
-                  </FormField>
-                  <FormField id="register-tarifa" label="Tarifa por hora" optional hint="Valor numérico no negativo." error={errors.tarifa_hora_base ?? serverFieldErrors.tarifa_hora_base}>
-                    <Input
-                      id="register-tarifa"
-                      name="tarifa_hora_base"
-                      type="number"
-                      min="0"
-                      step="any"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={values.tarifa_hora_base}
-                      error={Boolean(errors.tarifa_hora_base ?? serverFieldErrors.tarifa_hora_base)}
-                      onChange={(event) => updateField('tarifa_hora_base', event.target.value)}
-                    />
-                  </FormField>
-                </>
-              )}
-
               {formError && <FormError>{formError}</FormError>}
               <Button className="auth-submit" type="submit" loading={isLoading} loadingLabel="Creando cuenta…">
                 Crear cuenta <span aria-hidden="true">→</span>
               </Button>
-              <p className="auth-connection-note">
-                <span className="connection-dot connection-dot-live" aria-hidden="true" />
-                El registro enviará tus datos al endpoint configurado
-              </p>
             </form>
 
             <p className="auth-switch">

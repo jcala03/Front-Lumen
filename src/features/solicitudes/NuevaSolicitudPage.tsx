@@ -1,34 +1,38 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { FormError } from '../../components/ui/FormError'
 import { FormField } from '../../components/ui/FormField'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { Textarea } from '../../components/ui/Textarea'
 import { ApiError } from '../../services/api/client'
+import { getMaterias, type Materia } from '../../services/api/materias'
 import { crearSolicitud } from '../../services/api/solicitudes'
-import type { Modalidad } from '../../types/tutorias'
+import type { Modalidad, SolicitudTipo } from '../../types/tutorias'
 import { useSession } from '../auth/useSession'
 
 type FormValues = {
-  materia: string
+  materia_id: string
   tema_especifico: string
-  descripcion: string
   nivel_educativo: string
   modalidad: Modalidad | ''
   duracion_horas: string
-  direccion_texto: string
+  tipo: SolicitudTipo
+  fecha_programada: string
+  presupuesto_hora: string
+  ciudad: string
 }
 
 const initial: FormValues = {
-  materia: '',
+  materia_id: '',
   tema_especifico: '',
-  descripcion: '',
   nivel_educativo: '',
   modalidad: '',
   duracion_horas: '',
-  direccion_texto: '',
+  tipo: 'inmediata',
+  fecha_programada: '',
+  presupuesto_hora: '',
+  ciudad: '',
 }
 
 export function NuevaSolicitudPage() {
@@ -38,11 +42,27 @@ export function NuevaSolicitudPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>({})
   const [formError, setFormError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [geoLoading, setGeoLoading] = useState(false)
-  const [geoError, setGeoError] = useState('')
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [materias, setMaterias] = useState<Materia[] | null>(null)
+  const [catalogError, setCatalogError] = useState('')
+  const [catalogAttempt, setCatalogAttempt] = useState(0)
+  const token = session?.user.rol === 'estudiante' ? session.token : null
 
-  if (!session || session.user.rol !== 'estudiante') {
+  useEffect(() => {
+    if (!token) return
+    let active = true
+    getMaterias(token)
+      .then((res) => {
+        if (active) setMaterias(res.materias)
+      })
+      .catch((error) => {
+        if (active) {
+          setCatalogError(error instanceof ApiError ? error.message : 'No se pudo cargar el catálogo de materias.')
+        }
+      })
+    return () => { active = false }
+  }, [token, catalogAttempt])
+
+  if (!token) {
     return (
       <section className="page-section">
         <div className="container narrow-container">
@@ -61,31 +81,22 @@ export function NuevaSolicitudPage() {
     setFormError('')
   }
 
-  const getLocation = () => {
-    if (!navigator.geolocation) {
-      setGeoError('Tu navegador no soporta geolocalización.')
-      return
-    }
-    setGeoLoading(true)
-    setGeoError('')
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setGeoLoading(false)
-      },
-      () => {
-        setGeoError('No se pudo obtener la ubicación. Escribe la dirección manualmente.')
-        setGeoLoading(false)
-      },
-    )
-  }
-
   const validate = (): Partial<Record<keyof FormValues, string>> => {
     const e: Partial<Record<keyof FormValues, string>> = {}
-    if (!values.materia.trim()) e.materia = 'Indica la materia.'
+    if (!materias?.some(({ id }) => String(id) === values.materia_id)) e.materia_id = 'Selecciona una materia.'
+    if (!values.nivel_educativo) e.nivel_educativo = 'Selecciona el nivel educativo.'
     if (!values.modalidad) e.modalidad = 'Selecciona la modalidad.'
-    if (!values.duracion_horas || Number(values.duracion_horas) <= 0)
+    const duracion = Number(values.duracion_horas)
+    if (!Number.isFinite(duracion) || duracion <= 0) {
       e.duracion_horas = 'Indica la duración en horas.'
+    }
+    if (values.tipo === 'programada' && !Number.isFinite(Date.parse(values.fecha_programada))) {
+      e.fecha_programada = 'Indica la fecha y la hora.'
+    }
+    const presupuesto = Number(values.presupuesto_hora)
+    if (!Number.isFinite(presupuesto) || presupuesto < 0) {
+      e.presupuesto_hora = 'Ingresa un presupuesto igual o mayor que cero.'
+    }
     return e
   }
 
@@ -100,16 +111,17 @@ export function NuevaSolicitudPage() {
     try {
       await crearSolicitud(
         {
-          materia: values.materia.trim(),
+          materia_id: values.materia_id,
+          nivel_educativo: values.nivel_educativo,
           modalidad: values.modalidad as Modalidad,
+          tipo: values.tipo,
           duracion_horas: Number(values.duracion_horas),
-          ...(values.nivel_educativo ? { nivel_educativo: values.nivel_educativo } : {}),
           ...(values.tema_especifico.trim() ? { tema_especifico: values.tema_especifico.trim() } : {}),
-          ...(values.descripcion.trim() ? { descripcion: values.descripcion.trim() } : {}),
-          ...(values.direccion_texto.trim() ? { direccion_texto: values.direccion_texto.trim() } : {}),
-          ...(coords ? { latitud: coords.lat, longitud: coords.lng } : {}),
+          ...(values.tipo === 'programada' ? { fecha_programada: new Date(values.fecha_programada).toISOString() } : {}),
+          ...(values.presupuesto_hora ? { presupuesto_hora: Number(values.presupuesto_hora) } : {}),
+          ...(values.ciudad.trim() ? { ciudad: values.ciudad.trim() } : {}),
         },
-        session.token,
+        token,
       )
       navigate('/solicitudes', { replace: true })
     } catch (err) {
@@ -135,21 +147,33 @@ export function NuevaSolicitudPage() {
         <div className="form-card register-form-card">
           <form className="auth-form register-form" noValidate onSubmit={handleSubmit}>
             <div className="form-grid">
-              <FormField id="ns-materia" label="Materia" required error={errors.materia}>
-                <Input
+              <FormField
+                id="ns-materia"
+                label="Materia"
+                required
+                error={catalogError || errors.materia_id}
+              >
+                <Select
                   id="ns-materia"
-                  placeholder="Ej. Cálculo diferencial"
-                  value={values.materia}
-                  error={Boolean(errors.materia)}
-                  onChange={(e) => update('materia', e.target.value)}
-                />
+                  disabled={!materias?.length}
+                  value={values.materia_id}
+                  error={Boolean(catalogError || errors.materia_id)}
+                  onChange={(e) => update('materia_id', e.target.value)}
+                >
+                  <option value="">
+                    {catalogError ? 'Catálogo no disponible'
+                      : !materias ? 'Cargando materias…'
+                      : materias.length === 0 ? 'No hay materias registradas'
+                      : 'Selecciona una materia'}
+                  </option>
+                  {materias?.map(({ id, nombre }) => <option key={id} value={id}>{nombre}</option>)}
+                </Select>
               </FormField>
               <FormField id="ns-duracion" label="Duración (horas)" required error={errors.duracion_horas}>
                 <Input
                   id="ns-duracion"
                   type="number"
-                  min="1"
-                  step="0.5"
+                  step="any"
                   placeholder="2"
                   value={values.duracion_horas}
                   error={Boolean(errors.duracion_horas)}
@@ -157,6 +181,18 @@ export function NuevaSolicitudPage() {
                 />
               </FormField>
             </div>
+            {catalogError && (
+              <Button
+                type="button"
+                className="button-small"
+                onClick={() => {
+                  setCatalogError('')
+                  setCatalogAttempt((attempt) => attempt + 1)
+                }}
+              >
+                Volver a cargar materias
+              </Button>
+            )}
 
             <div className="form-grid">
               <FormField id="ns-modalidad" label="Modalidad" required error={errors.modalidad}>
@@ -171,10 +207,11 @@ export function NuevaSolicitudPage() {
                   <option value="presencial">Presencial</option>
                 </Select>
               </FormField>
-              <FormField id="ns-nivel" label="Nivel educativo" optional>
+              <FormField id="ns-nivel" label="Nivel educativo" required error={errors.nivel_educativo}>
                 <Select
                   id="ns-nivel"
                   value={values.nivel_educativo}
+                  error={Boolean(errors.nivel_educativo)}
                   onChange={(e) => update('nivel_educativo', e.target.value)}
                 >
                   <option value="">Selecciona el nivel</option>
@@ -194,45 +231,51 @@ export function NuevaSolicitudPage() {
               />
             </FormField>
 
-            <FormField id="ns-descripcion" label="Descripción" optional hint="Cuéntale al tutor en qué necesitas ayuda.">
-              <Textarea
-                id="ns-descripcion"
-                rows={4}
-                placeholder="Explica brevemente tu situación académica y qué esperas de la tutoría."
-                value={values.descripcion}
-                onChange={(e) => update('descripcion', e.target.value)}
-              />
-            </FormField>
-
-            <FormField id="ns-direccion" label="Dirección o lugar de encuentro" optional hint="Para modalidad presencial.">
-              <Input
-                id="ns-direccion"
-                placeholder="Ej. Biblioteca de la universidad, Barranquilla"
-                value={values.direccion_texto}
-                onChange={(e) => update('direccion_texto', e.target.value)}
-              />
-            </FormField>
-
-            <div className="geo-row">
-              <button
-                type="button"
-                className="geo-button"
-                disabled={geoLoading}
-                onClick={getLocation}
-              >
-                {geoLoading ? 'Obteniendo ubicación…' : '📍 Usar mi ubicación actual'}
-              </button>
-              {coords && (
-                <span className="geo-ok">
-                  ✓ Ubicación capturada ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})
-                </span>
+            <div className="form-grid">
+              <FormField id="ns-tipo" label="¿Cuándo necesitas la tutoría?" required>
+                <Select id="ns-tipo" value={values.tipo} onChange={(e) => update('tipo', e.target.value)}>
+                  <option value="inmediata">Lo antes posible</option>
+                  <option value="programada">Fecha programada</option>
+                </Select>
+              </FormField>
+              {values.tipo === 'programada' && (
+                <FormField id="ns-fecha" label="Fecha y hora" required error={errors.fecha_programada}>
+                  <Input
+                    id="ns-fecha"
+                    type="datetime-local"
+                    value={values.fecha_programada}
+                    error={Boolean(errors.fecha_programada)}
+                    onChange={(e) => update('fecha_programada', e.target.value)}
+                  />
+                </FormField>
               )}
-              {geoError && <FormError>{geoError}</FormError>}
+            </div>
+
+            <div className="form-grid">
+              <FormField id="ns-presupuesto" label="Presupuesto por hora (COP)" optional error={errors.presupuesto_hora}>
+                <Input
+                  id="ns-presupuesto"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={values.presupuesto_hora}
+                  error={Boolean(errors.presupuesto_hora)}
+                  onChange={(e) => update('presupuesto_hora', e.target.value)}
+                />
+              </FormField>
+              <FormField id="ns-ciudad" label="Ciudad" optional>
+                <Input
+                  id="ns-ciudad"
+                  autoComplete="address-level2"
+                  value={values.ciudad}
+                  onChange={(e) => update('ciudad', e.target.value)}
+                />
+              </FormField>
             </div>
 
             {formError && <FormError>{formError}</FormError>}
 
-            <Button className="auth-submit" type="submit" loading={isLoading} loadingLabel="Creando solicitud…">
+            <Button className="auth-submit" type="submit" disabled={!materias?.length} loading={isLoading} loadingLabel="Creando solicitud…">
               Crear solicitud <span aria-hidden="true">→</span>
             </Button>
           </form>

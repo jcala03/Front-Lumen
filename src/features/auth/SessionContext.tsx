@@ -5,30 +5,24 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { getProfile, login as requestLogin, register as requestRegister } from '../../services/api/auth'
-import type { AuthUser, LoginRequest, ProfileResponse, RegisterRequest } from '../../types/auth'
+import { login as requestLogin, register as requestRegister } from '../../services/api/auth'
+import type { LoginRequest, RegisterRequest } from '../../types/auth'
 import { SessionContext, type Session } from './session-context'
 
 type SessionProviderProps = {
   children: ReactNode
 }
 
-/** Decodifica el payload del JWT sin verificar la firma (solo para leer claims locales). */
-function decodeJwtClaims(token: string): ProfileResponse['usuario'] | null {
+function getTokenExpiration(token: string): number {
   try {
-    const part = token.split('.')[1]
-    if (!part) return null
+    const part = token.split('.')[1] ?? ''
     const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
-    const payload = JSON.parse(json) as Record<string, unknown>
-    return {
-      id: (payload.id as number | string) ?? 0,
-      rol: (payload.rol as ProfileResponse['usuario']['rol']) ?? 'estudiante',
-      iat: payload.iat as number | undefined,
-      exp: payload.exp as number | undefined,
-    }
+    const { exp } = JSON.parse(json) as { exp?: unknown }
+    if (typeof exp === 'number' && Number.isFinite(exp) && exp * 1000 > Date.now()) return exp * 1000
   } catch {
-    return null
+    // El servidor valida la firma en cada ruta protegida.
   }
+  throw new Error('No se pudo leer la vigencia del token de sesión.')
 }
 
 export function SessionProvider({ children }: SessionProviderProps) {
@@ -37,41 +31,22 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => {
-    if (!session?.claims.exp) return
+    if (!session) return
 
     const timeout = window.setTimeout(() => {
       setSession(null)
       setSessionExpired(true)
-    }, Math.max(0, session.claims.exp * 1000 - Date.now()))
+    }, Math.max(0, session.expiresAt - Date.now()))
 
     return () => window.clearTimeout(timeout)
   }, [session])
 
-  const authenticate = useCallback(async (
-    request: () => Promise<{ token: string; usuario: AuthUser }>,
-  ) => {
+  const signIn = useCallback(async (payload: LoginRequest) => {
     setIsLoading(true)
     setSessionExpired(false)
     try {
-      const response = await request()
-
-      let claims: ProfileResponse['usuario']
-      try {
-        const profile = await getProfile(response.token)
-        claims = profile.usuario
-      } catch {
-        // El endpoint /api/auth/perfil puede no estar disponible;
-        // decodificamos el JWT localmente para obtener los claims.
-        const decoded = decodeJwtClaims(response.token)
-        if (!decoded) throw new Error('No se pudo verificar el token de sesión.')
-        claims = decoded
-      }
-
-      setSession({
-        token: response.token,
-        user: response.usuario,
-        claims,
-      })
+      const { token, usuario } = await requestLogin(payload)
+      setSession({ token, user: usuario, expiresAt: getTokenExpiration(token) })
     } catch (error) {
       setSession(null)
       throw error
@@ -80,13 +55,14 @@ export function SessionProvider({ children }: SessionProviderProps) {
     }
   }, [])
 
-  const signIn = useCallback((payload: LoginRequest) => (
-    authenticate(() => requestLogin(payload))
-  ), [authenticate])
-
-  const signUp = useCallback((payload: RegisterRequest) => (
-    authenticate(() => requestRegister(payload))
-  ), [authenticate])
+  const signUp = useCallback(async (payload: RegisterRequest) => {
+    setIsLoading(true)
+    try {
+      await requestRegister(payload)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   const signOut = useCallback(() => {
     setSession(null)

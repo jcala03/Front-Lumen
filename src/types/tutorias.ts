@@ -1,107 +1,75 @@
+// PostgreSQL puede serializar los identificadores y los campos numéricos como cadenas.
+export type Id = number | string
+type Numeric = number | string
+
 export type Modalidad = 'presencial' | 'virtual'
+export type SolicitudTipo = 'inmediata' | 'programada'
 
-export type SolicitudEstado = 'abierta' | 'aceptada' | 'cancelada' | 'cerrada'
-
-export type Solicitud = {
-  id: number
-  estudiante_id: number
-  materia: string
-  nivel_educativo?: string
+export type SolicitudRequest = {
+  materia_id: Id
+  nivel_educativo: string
   modalidad: Modalidad
+  tipo: SolicitudTipo
   duracion_horas: number
   tema_especifico?: string
-  descripcion?: string
-  latitud?: number
-  longitud?: number
-  direccion_texto?: string
-  estado: SolicitudEstado
-  fecha_creacion: string
-  total_ofertas?: number
-  // info del estudiante (vista tutor)
-  nombre?: string
-  apellido?: string
-  avatar_url?: string | null
-  institucion?: string
+  fecha_programada?: string
+  presupuesto_hora?: number
   ciudad?: string
 }
 
-export type SolicitudRequest = {
-  materia: string
-  nivel_educativo?: string
+export type Solicitud = {
+  id: Id
+  estudiante_id: Id
+  materia_id: Id
+  materia_nombre?: string | null
+  nivel_educativo: string
   modalidad: Modalidad
-  duracion_horas: number
-  materia_id?: number
-  tema_especifico?: string
-  descripcion?: string
-  latitud?: number
-  longitud?: number
-  direccion_texto?: string
+  tipo: SolicitudTipo
+  duracion_horas: Numeric
+  tema_especifico: string | null
+  fecha_programada: string | null
+  presupuesto_hora: Numeric | null
+  ciudad: string | null
+  estado: string
+  creada_en: string
 }
 
-export type OfertaEstado = 'pendiente' | 'aceptada' | 'rechazada'
-
 export type Oferta = {
-  id: number
-  solicitud_id: number
-  tutor_id: number
-  precio_ofrecido: number
-  mensaje?: string
-  estado: OfertaEstado
-  fecha_oferta: string
-  // info del tutor
-  nombre?: string
-  apellido?: string
-  avatar_url?: string | null
-  biografia?: string
-  tarifa_hora_base?: number
-  calificacion_promedio?: number
+  id: Id
+  solicitud_id: Id
+  tutor_id: Id
+  precio_hora: Numeric
+  mensaje: string | null
+  estado: string
+  creada_en: string
+  expira_en: string | null
+  tarifa_tutor?: Numeric | null
+  nombre_tutor?: string | null
+  apellido_tutor?: string | null
+  tema_especifico?: string | null
+  nivel_educativo?: string | null
 }
 
 export type OfertaRequest = {
-  solicitud_id: number
+  solicitud_id: Id
   precio_ofrecido: number
   mensaje?: string
 }
 
-export type TutoriaEstado = 'programada' | 'en_curso' | 'finalizada' | 'cancelada'
-
+export type TutoriaEstado = 'confirmada' | 'en_curso' | 'finalizada' | 'cancelada'
 export type Tutoria = {
-  id: number
-  solicitud_id?: number
-  oferta_id?: number
-  tutor_id: number
-  estudiante_id: number
+  id: Id
+  solicitud_id: Id
+  oferta_id: Id
+  tutor_id: Id
+  estudiante_id: Id
   estado: TutoriaEstado
-  enlace_sala?: string
-  fecha_confirmacion: string
-  // participantes
-  nombre_tutor?: string
-  apellido_tutor?: string
-  nombre_estudiante?: string
-  apellido_estudiante?: string
-  materia?: string
-  duracion_horas?: number
-  modalidad?: string
-}
-
-export type TutoriaRequest = {
-  solicitud_id: number
-  oferta_id: number
-  tutor_id: number
-}
-
-export type NearbyUser = {
-  id: number
-  nombre: string
-  apellido: string
-  avatar_url?: string | null
-  ciudad?: string
-  distancia_km: number
-  // tutor
-  biografia?: string
-  tarifa_hora_base?: number
-  calificacion_promedio?: number
-  // estudiante
-  nivel_educativo?: string
-  institucion?: string
+  fecha_inicio: string | null
+  duracion_horas: Numeric
+  precio_hora: Numeric
+  precio_total: Numeric | null
+  modalidad: Modalidad
+  enlace_sala: string | null
+  creada_en: string
+  tema_especifico?: string | null
 }

@@ -1,16 +1,22 @@
 import { apiRequest } from './client'
-import type { Solicitud, SolicitudRequest, Oferta } from '../../types/tutorias'
+import type { Id, Solicitud, SolicitudRequest, Oferta } from '../../types/tutorias'
 
 export type SolicitudesResponse = {
+  ok: true
+  total: number
   solicitudes: Solicitud[]
 }
 
 export type SolicitudResponse = {
+  ok: true
   mensaje: string
   solicitud: Solicitud
 }
 
 export type OfertasDeSolicitudResponse = {
+  ok: true
+  solicitud_id: Id
+  total_ofertas: number
   ofertas: Oferta[]
 }
 
@@ -42,11 +48,11 @@ export function crearSolicitud(
 
 /** Estudiante: lista las ofertas recibidas para una solicitud */
 export function getOfertasDeSolicitud(
-  solicitudId: number,
+  solicitudId: Id,
   token: string,
 ): Promise<OfertasDeSolicitudResponse> {
   return apiRequest<OfertasDeSolicitudResponse>(
-    `/api/solicitudes/${solicitudId}/ofertas`,
+    `/api/solicitudes/${encodeURIComponent(solicitudId)}/ofertas`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
 }

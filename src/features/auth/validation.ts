@@ -10,12 +10,6 @@ export type RegisterFormValues = {
   apellido: string
   correo: string
   password: string
-  telefono: string
-  ciudad: string
-  nivel_educativo: string
-  institucion: string
-  biografia: string
-  tarifa_hora_base: string
 }
 
 export type RegisterValidationErrors = Partial<Record<keyof RegisterFormValues, string>>
@@ -45,7 +39,6 @@ export function validateLogin(values: LoginFormValues): LoginValidationErrors {
 
 export function validateRegister(
   values: RegisterFormValues,
-  role: 'estudiante' | 'tutor',
 ): RegisterValidationErrors {
   const errors: RegisterValidationErrors = {}
 
@@ -57,14 +50,6 @@ export function validateRegister(
 
   if (!values.password.trim() || values.password.length < 8) {
     errors.password = 'La contraseña debe tener al menos 8 caracteres.'
-  }
-
-  if (
-    role === 'tutor' &&
-    values.tarifa_hora_base.trim() &&
-    (!Number.isFinite(Number(values.tarifa_hora_base)) || Number(values.tarifa_hora_base) < 0)
-  ) {
-    errors.tarifa_hora_base = 'Ingresa un valor numérico igual o mayor que cero.'
   }
 
   return errors

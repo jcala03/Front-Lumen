@@ -1,10 +1,10 @@
 import { createContext } from 'react'
-import type { AuthUser, LoginRequest, ProfileResponse, RegisterRequest } from '../../types/auth'
+import type { AuthUser, LoginRequest, RegisterRequest } from '../../types/auth'
 
 export type Session = {
   token: string
   user: AuthUser
-  claims: ProfileResponse['usuario']
+  expiresAt: number
 }
 
 export type SessionContextValue = {

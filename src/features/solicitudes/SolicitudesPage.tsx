@@ -4,20 +4,16 @@ import { Button } from '../../components/ui/Button'
 import { FormError } from '../../components/ui/FormError'
 import { ApiError } from '../../services/api/client'
 import { getSolicitudesAbiertas, getMisSolicitudes } from '../../services/api/solicitudes'
-import { crearOferta } from '../../services/api/ofertas'
-import type { Solicitud } from '../../types/tutorias'
+import { crearOferta, getMisOfertas } from '../../services/api/ofertas'
+import type { Id, Solicitud } from '../../types/tutorias'
 import { useSession } from '../auth/useSession'
+import { formatoCOP, formatoFecha, formatoFechaHora, modalidadLabel } from '../tutorias/format'
 
 const ESTADO_LABEL: Record<string, string> = {
-  abierta: 'Abierta',
-  aceptada: 'Aceptada',
+  activa: 'Activa',
+  asignada: 'Asignada',
   cancelada: 'Cancelada',
   cerrada: 'Cerrada',
-}
-
-const MODALIDAD_LABEL: Record<string, string> = {
-  presencial: 'Presencial',
-  virtual: 'Virtual',
 }
 
 export function SolicitudesPage() {
@@ -29,12 +25,12 @@ export function SolicitudesPage() {
   const [error, setError] = useState('')
 
   // Estado para formulario de oferta (tutor)
-  const [ofertaOpen, setOfertaOpen] = useState<number | null>(null)
+  const [ofertaOpen, setOfertaOpen] = useState<Id | null>(null)
   const [precio, setPrecio] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [ofertaLoading, setOfertaLoading] = useState(false)
   const [ofertaError, setOfertaError] = useState('')
-  const [ofertaOk, setOfertaOk] = useState<number | null>(null)
+  const [solicitudesOfertadas, setSolicitudesOfertadas] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!session) return
@@ -44,12 +40,13 @@ export function SolicitudesPage() {
       setIsLoading(true)
       setError('')
       try {
-        const fetcher = rol === 'tutor'
-          ? getSolicitudesAbiertas(session.token)
-          : getMisSolicitudes(session.token)
-        const res = await fetcher
+        const [res, misOfertas] = await Promise.all([
+          rol === 'tutor' ? getSolicitudesAbiertas(session.token) : getMisSolicitudes(session.token),
+          rol === 'tutor' ? getMisOfertas(session.token) : null,
+        ])
         if (active) {
-          setSolicitudes(res.solicitudes ?? [])
+          setSolicitudes(res.solicitudes)
+          setSolicitudesOfertadas(new Set(misOfertas?.ofertas.map((oferta) => String(oferta.solicitud_id))))
         }
       } catch (err) {
         if (active) {
@@ -68,16 +65,21 @@ export function SolicitudesPage() {
     }
   }, [session, rol])
 
-  const handleOfertar = async (solicitudId: number) => {
-    if (!session || !precio.trim()) return
+  const handleOfertar = async (solicitudId: Id) => {
+    if (!session || ofertaLoading) return
+    const precioHora = Number(precio)
+    if (!Number.isFinite(precioHora) || precioHora <= 0) {
+      setOfertaError('Ingresa un precio por hora mayor que cero.')
+      return
+    }
     setOfertaLoading(true)
     setOfertaError('')
     try {
       await crearOferta(
-        { solicitud_id: solicitudId, precio_ofrecido: Number(precio), mensaje },
+        { solicitud_id: solicitudId, precio_ofrecido: precioHora, mensaje: mensaje.trim() },
         session.token,
       )
-      setOfertaOk(solicitudId)
+      setSolicitudesOfertadas((actuales) => new Set(actuales).add(String(solicitudId)))
       setOfertaOpen(null)
       setPrecio('')
       setMensaje('')
@@ -118,7 +120,9 @@ export function SolicitudesPage() {
               <>Mis solicitudes de <span>tutoría.</span></>
             )}
           </h1>
-          {!esTutor && (
+          {esTutor ? (
+            <Link className="text-link" to="/ofertas">Mis ofertas <span aria-hidden="true">→</span></Link>
+          ) : (
             <Link className="button" to="/solicitudes/nueva">
               Nueva solicitud <span aria-hidden="true">+</span>
             </Link>
@@ -158,48 +162,35 @@ export function SolicitudesPage() {
                   <span className={`estado-badge estado-${s.estado}`}>
                     {ESTADO_LABEL[s.estado] ?? s.estado}
                   </span>
-                  <h2 className="solicitud-materia">{s.materia}</h2>
+                  <h2 className="solicitud-materia">{s.materia_nombre ?? `Materia #${s.materia_id}`}</h2>
                   {s.tema_especifico && (
                     <p className="solicitud-tema">{s.tema_especifico}</p>
                   )}
                 </div>
                 <div className="solicitud-meta">
-                  <span className="meta-chip">{MODALIDAD_LABEL[s.modalidad] ?? s.modalidad}</span>
+                  <span className="meta-chip">{modalidadLabel[s.modalidad] ?? s.modalidad}</span>
                   <span className="meta-chip">{s.duracion_horas}h</span>
                   {s.nivel_educativo && <span className="meta-chip">{s.nivel_educativo}</span>}
+                  <span className="meta-chip">{s.tipo === 'programada' ? 'Programada' : 'Inmediata'}</span>
                 </div>
               </div>
 
-              {s.descripcion && (
-                <p className="solicitud-descripcion">{s.descripcion}</p>
-              )}
-
-              {/* Info del estudiante (vista tutor) */}
-              {esTutor && (s.nombre || s.ciudad) && (
-                <div className="solicitud-student-info">
-                  <span>
-                    {s.nombre} {s.apellido}
-                    {s.institucion && ` · ${s.institucion}`}
-                    {s.ciudad && ` · ${s.ciudad}`}
-                  </span>
+              {(s.fecha_programada || Number(s.presupuesto_hora) > 0 || s.ciudad) && (
+                <div className="solicitud-datos">
+                  {s.fecha_programada && <div>Programada para {formatoFechaHora.format(new Date(s.fecha_programada))}</div>}
+                  {Number(s.presupuesto_hora) > 0 && <div>Presupuesto de {formatoCOP.format(Number(s.presupuesto_hora))}/h</div>}
+                  {s.ciudad && <div>{s.ciudad}</div>}
                 </div>
               )}
 
               <div className="solicitud-card-footer">
                 <span className="solicitud-fecha">
-                  {new Date(s.fecha_creacion).toLocaleDateString('es-CO', {
-                    year: 'numeric', month: 'short', day: 'numeric',
-                  })}
+                  {formatoFecha.format(new Date(s.creada_en))}
                 </span>
 
                 {/* Vista estudiante: ir al detalle */}
                 {!esTutor && (
                   <div className="solicitud-actions">
-                    {typeof s.total_ofertas === 'number' && (
-                      <span className="ofertas-count">
-                        {s.total_ofertas} oferta{s.total_ofertas !== 1 ? 's' : ''}
-                      </span>
-                    )}
                     <Link className="text-link" to={`/solicitudes/${s.id}`}>
                       Ver ofertas <span aria-hidden="true">→</span>
                     </Link>
@@ -207,9 +198,9 @@ export function SolicitudesPage() {
                 )}
 
                 {/* Vista tutor: formulario de oferta */}
-                {esTutor && s.estado === 'abierta' && (
+                {esTutor && s.estado === 'activa' && (
                   <div className="solicitud-actions">
-                    {ofertaOk === s.id ? (
+                    {solicitudesOfertadas.has(String(s.id)) ? (
                       <span className="oferta-enviada">✓ Oferta enviada</span>
                     ) : ofertaOpen === s.id ? (
                       <div className="oferta-inline-form">
@@ -218,13 +209,15 @@ export function SolicitudesPage() {
                           type="number"
                           min="0"
                           step="any"
-                          placeholder="Precio (COP)"
+                          aria-label="Precio por hora (COP)"
+                          placeholder="Precio por hora (COP)"
                           value={precio}
                           onChange={(e) => setPrecio(e.target.value)}
                         />
                         <input
                           className="ui-input"
                           type="text"
+                          aria-label="Mensaje opcional"
                           placeholder="Mensaje opcional"
                           value={mensaje}
                           onChange={(e) => setMensaje(e.target.value)}
@@ -241,6 +234,7 @@ export function SolicitudesPage() {
                           <button
                             className="nav-link"
                             type="button"
+                            disabled={ofertaLoading}
                             onClick={() => { setOfertaOpen(null); setOfertaError('') }}
                           >
                             Cancelar
@@ -251,7 +245,13 @@ export function SolicitudesPage() {
                       <button
                         className="button button-small"
                         type="button"
-                        onClick={() => setOfertaOpen(s.id)}
+                        disabled={ofertaLoading}
+                        onClick={() => {
+                          setOfertaOpen(s.id)
+                          setPrecio('')
+                          setMensaje('')
+                          setOfertaError('')
+                        }}
                       >
                         Hacer oferta <span aria-hidden="true">↗</span>
                       </button>

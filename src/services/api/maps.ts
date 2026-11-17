@@ -1,28 +1,20 @@
 import { apiRequest } from './client'
-import type { NearbyUser } from '../../types/tutorias'
 
-export type NearbySearchParams = {
-  lat: number
-  lng: number
-  radio?: number
-  rol?: 'tutor' | 'estudiante'
+export type Direccion = {
+  place_id: number
+  display_name: string
+  lat: string
+  lon: string
 }
 
-export type NearbySearchResponse = {
-  resultados: NearbyUser[]
+type DireccionesResponse = {
+  mensaje: string
+  resultados: Direccion[]
 }
 
-export function searchNearby(
-  params: NearbySearchParams,
-  token: string,
-): Promise<NearbySearchResponse> {
-  const query = new URLSearchParams({
-    lat: String(params.lat),
-    lng: String(params.lng),
-    radio: String(params.radio ?? 10),
-    rol: params.rol ?? 'tutor',
-  })
-  return apiRequest<NearbySearchResponse>(`/api/mapas/buscar?${query.toString()}`, {
+export function buscarDirecciones(direccion: string, token: string): Promise<DireccionesResponse> {
+  const query = new URLSearchParams({ q: direccion })
+  return apiRequest<DireccionesResponse>(`/api/mapas/buscar?${query}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 }

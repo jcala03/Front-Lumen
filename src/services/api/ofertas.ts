@@ -1,13 +1,22 @@
 import { apiRequest } from './client'
-import type { Oferta, OfertaRequest } from '../../types/tutorias'
+import type { Id, Oferta, OfertaRequest, Tutoria } from '../../types/tutorias'
 
 export type OfertasResponse = {
+  ok: true
+  total: number
   ofertas: Oferta[]
 }
 
 export type OfertaResponse = {
+  ok: true
   mensaje: string
   oferta: Oferta
+}
+
+type AceptarOfertaResponse = {
+  ok: true
+  mensaje: string
+  tutoria: Tutoria
 }
 
 /** Tutor: envía una oferta para una solicitud */
@@ -24,10 +33,10 @@ export function crearOferta(
 
 /** Estudiante: acepta una oferta específica */
 export function aceptarOferta(
-  ofertaId: number,
+  ofertaId: Id,
   token: string,
-): Promise<{ mensaje: string }> {
-  return apiRequest<{ mensaje: string }>(`/api/ofertas/${ofertaId}/aceptar`, {
+): Promise<AceptarOfertaResponse> {
+  return apiRequest<AceptarOfertaResponse>(`/api/ofertas/${encodeURIComponent(ofertaId)}/aceptar`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -36,23 +45,6 @@ export function aceptarOferta(
 /** Tutor: lista todas sus ofertas enviadas */
 export function getMisOfertas(token: string): Promise<OfertasResponse> {
   return apiRequest<OfertasResponse>('/api/ofertas/tutor/mis-ofertas', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-}
-
-/** Tutor: lista sus sesiones confirmadas */
-export function getOfertasConfirmadasTutor(token: string): Promise<OfertasResponse> {
-  return apiRequest<OfertasResponse>('/api/ofertas/confirmadas/tutor', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-}
-
-/** Lista ofertas de una solicitud (cualquier rol autenticado) */
-export function getOfertasDeSolicitud(
-  solicitudId: number,
-  token: string,
-): Promise<OfertasResponse> {
-  return apiRequest<OfertasResponse>(`/api/ofertas/solicitud/${solicitudId}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 }

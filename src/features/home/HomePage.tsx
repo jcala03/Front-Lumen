@@ -10,7 +10,7 @@ const values = [
   {
     number: '02',
     title: 'Conecta con personas',
-    text: 'Publica una solicitud y recibe ofertas de tutores disponibles cerca de ti.',
+    text: 'Publica una solicitud y recibe ofertas de tutores disponibles.',
   },
   {
     number: '03',
@@ -43,7 +43,7 @@ export function HomePage() {
               ) : (
                 <>
                   <Link className="button" to="/registro">Conoce Lumen <span aria-hidden="true">→</span></Link>
-                  <Link className="text-link" to="/tutores">Explorar la plataforma</Link>
+                  <Link className="text-link" to="/login">Iniciar sesión</Link>
                 </>
               )}
             </div>

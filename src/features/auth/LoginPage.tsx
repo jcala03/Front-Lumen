@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { FormError } from '../../components/ui/FormError'
 import { FormField } from '../../components/ui/FormField'
@@ -12,7 +12,9 @@ import { validateEmail, validateLogin } from './validation'
 import type { LoginFormValues } from './validation'
 
 export function LoginPage() {
-  const [values, setValues] = useState<LoginFormValues>({ correo: '', password: '' })
+  const { state } = useLocation()
+  const registeredEmail = typeof state?.registeredEmail === 'string' ? state.registeredEmail : ''
+  const [values, setValues] = useState<LoginFormValues>({ correo: registeredEmail, password: '' })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({})
   const [formError, setFormError] = useState('')
   const { signIn, isLoading } = useSession()
@@ -65,6 +67,9 @@ export function LoginPage() {
           <p className="eyebrow">Qué bueno tenerte de vuelta</p>
           <h1 className="auth-title">Inicia sesión en <span>Lumen.</span></h1>
           <p className="auth-description">Ingresa tus datos para continuar tu camino de aprendizaje.</p>
+          {registeredEmail && (
+            <StatusNotice title="Cuenta creada">Inicia sesión con la contraseña que acabas de elegir.</StatusNotice>
+          )}
 
           <form className="auth-form" noValidate onSubmit={handleSubmit}>
             <FormField id="login-email" label="Correo electrónico" required error={errors.correo}>
@@ -98,21 +103,12 @@ export function LoginPage() {
             <Button className="auth-submit" type="submit" loading={isLoading} loadingLabel="Verificando acceso…">
               Iniciar sesión <span aria-hidden="true">→</span>
             </Button>
-            <p className="auth-connection-note">
-              <span className="connection-dot connection-dot-live" aria-hidden="true" />
-              El acceso se validará con el servicio configurado
-            </p>
           </form>
 
           <p className="auth-switch">
             ¿Todavía no tienes cuenta? <Link to="/registro">Crea tu cuenta</Link>
           </p>
 
-          <div className="auth-inline-notice">
-            <StatusNotice title="Sesión protegida">
-              El token se conserva solo en memoria durante esta pestaña y se valida con el endpoint de perfil.
-            </StatusNotice>
-          </div>
         </div>
       </div>
     </section>

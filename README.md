@@ -26,22 +26,12 @@ Para producción en Render, define la variable de entorno `VITE_API_BASE_URL` en
 
 ## Funcionalidades integradas
 
-- **Autenticación completa:**
-  - Registro con rol diferenciado (`estudiante` y `tutor`).
-  - Inicio de sesión con JWT y cierre de sesión.
-  - Decodificación y validación de claims (`exp`, `rol`, etc.) en memoria con manejo de expiración de sesión.
-- **Solicitudes de tutoría (`/solicitudes`):**
-  - **Estudiante:** Creación de solicitudes con materia, modalidad (presencial/virtual), duración, tema específico, descripción y geolocalización opcional.
-  - **Estudiante:** Detalle de solicitud (`/solicitudes/:id`) con lista de ofertas recibidas de tutores y opción de aceptar oferta.
-  - **Tutor:** Exploración de solicitudes abiertas creadas por estudiantes con formulario en línea para enviar ofertas de precio y mensaje.
-- **Tutorías confirmadas (`/tutorias`):**
-  - Lista de sesiones confirmadas para el usuario autenticado (estudiante o tutor).
-  - **Tutor:** Configuración y edición del enlace de sala virtual (Meet, Zoom, Teams, etc.).
-  - **Tutor y Estudiante:** Actualización del estado de la tutoría (`programada`, `en_curso`, `finalizada`, `cancelada`).
-- **Exploración de tutores y búsqueda por ubicación (`/tutores` y `/ubicaciones`):**
-  - Búsqueda radial basada en geolocalización real (Haversine) mediante el endpoint `/api/mapas/buscar`.
-  - Filtro por radio de búsqueda en kilómetros y rol (`tutor` / `estudiante`).
-  - Visualización de perfiles con distancia calculada, tarifas y calificaciones.
+- El registro crea la cuenta y dirige a inicio de sesión. El JWT se conserva en memoria y la sesión se cierra cuando expira.
+- Los estudiantes publican solicitudes inmediatas o programadas y seleccionan la materia por nombre del catálogo del backend. También indican nivel educativo, modalidad y duración, con tema, presupuesto por hora y ciudad opcionales.
+- Los tutores consultan solicitudes activas, envían propuestas por hora y revisan su estado en **Mis ofertas**.
+- Los estudiantes consultan las ofertas de sus solicitudes. Al aceptar una oferta, el backend crea la tutoría y esta aparece en **Mis tutorías**.
+- Ambos roles pueden consultar sus tutorías y actualizar su estado (`confirmada`, `en_curso`, `finalizada`, `cancelada`). El tutor puede asignar el enlace de sala virtual.
+- **Ubicaciones** permite buscar direcciones por texto y abrirlas en OpenStreetMap.
 
 ## Endpoints de la API integrados
 
@@ -49,6 +39,7 @@ Para producción en Render, define la variable de entorno `VITE_API_BASE_URL` en
 |---|---|---|---|
 | `POST` | `/api/auth/registro` | Público | Registro de estudiante o tutor. |
 | `POST` | `/api/auth/login` | Público | Inicio de sesión, devuelve token JWT. |
+| `GET` | `/api/materias` | Autenticado | Cargar el catálogo de materias para el formulario. |
 | `GET` | `/api/solicitudes` | Tutor | Listar solicitudes abiertas disponibles. |
 | `GET` | `/api/solicitudes/mis-solicitudes` | Estudiante | Listar solicitudes propias del estudiante. |
 | `POST` | `/api/solicitudes` | Estudiante | Crear una nueva solicitud de tutoría. |
@@ -59,7 +50,7 @@ Para producción en Render, define la variable de entorno `VITE_API_BASE_URL` en
 | `GET` | `/api/tutorias/mis-tutorias` | Autenticado | Listar tutorías confirmadas del usuario. |
 | `PATCH` | `/api/tutorias/:id/enlace` | Tutor | Actualizar enlace de sala virtual de la tutoría. |
 | `PATCH` | `/api/tutorias/:id/estado` | Autenticado | Actualizar estado de la sesión de tutoría. |
-| `GET` | `/api/mapas/buscar?lat=...&lng=...&radio=...&rol=...` | Autenticado | Buscar tutores o estudiantes por proximidad geográfica. |
+| `GET` | `/api/mapas/buscar?q=...` | Autenticado | Buscar direcciones en OpenStreetMap. |
 
 ## Despliegue en Render
 

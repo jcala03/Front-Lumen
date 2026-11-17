@@ -1,11 +1,14 @@
 import { apiRequest } from './client'
-import type { Tutoria, TutoriaEstado, TutoriaRequest } from '../../types/tutorias'
+import type { Id, Tutoria, TutoriaEstado } from '../../types/tutorias'
 
 export type TutoriasResponse = {
+  ok: true
+  total: number
   tutorias: Tutoria[]
 }
 
 export type TutoriaResponse = {
+  ok: true
   mensaje: string
   tutoria: Tutoria
 }
@@ -17,25 +20,13 @@ export function getMisTutorias(token: string): Promise<TutoriasResponse> {
   })
 }
 
-/** Estudiante: confirma una tutoría directamente */
-export function confirmarTutoria(
-  payload: TutoriaRequest,
-  token: string,
-): Promise<TutoriaResponse> {
-  return apiRequest<TutoriaResponse>('/api/tutorias', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers: { Authorization: `Bearer ${token}` },
-  })
-}
-
 /** Tutor: agrega o actualiza el enlace de sala virtual */
 export function actualizarEnlaceSala(
-  tutoriaId: number,
+  tutoriaId: Id,
   enlace_sala: string,
   token: string,
 ): Promise<TutoriaResponse> {
-  return apiRequest<TutoriaResponse>(`/api/tutorias/${tutoriaId}/enlace`, {
+  return apiRequest<TutoriaResponse>(`/api/tutorias/${encodeURIComponent(tutoriaId)}/enlace`, {
     method: 'PATCH',
     body: JSON.stringify({ enlace_sala }),
     headers: { Authorization: `Bearer ${token}` },
@@ -44,11 +35,11 @@ export function actualizarEnlaceSala(
 
 /** Ambos roles: actualiza el estado de la tutoría */
 export function actualizarEstadoTutoria(
-  tutoriaId: number,
+  tutoriaId: Id,
   estado: TutoriaEstado,
   token: string,
 ): Promise<TutoriaResponse> {
-  return apiRequest<TutoriaResponse>(`/api/tutorias/${tutoriaId}/estado`, {
+  return apiRequest<TutoriaResponse>(`/api/tutorias/${encodeURIComponent(tutoriaId)}/estado`, {
     method: 'PATCH',
     body: JSON.stringify({ estado }),
     headers: { Authorization: `Bearer ${token}` },

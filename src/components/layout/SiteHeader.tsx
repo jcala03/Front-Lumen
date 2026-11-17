@@ -4,12 +4,12 @@ import { useSession } from '../../features/auth/useSession'
 
 const publicNav = [
   { to: '/', label: 'Inicio', end: true },
-  { to: '/tutores', label: 'Tutores' },
   { to: '/ubicaciones', label: 'Ubicaciones' },
 ]
 
 const authNav = [
   { to: '/solicitudes', label: 'Solicitudes' },
+  { to: '/ofertas', label: 'Mis ofertas', tutorOnly: true },
   { to: '/tutorias', label: 'Mis tutorías' },
 ]
 
@@ -63,7 +63,7 @@ export function SiteHeader() {
             </NavLink>
           ))}
 
-          {session && authNav.map(({ to, label }) => (
+          {session && authNav.filter(({ tutorOnly }) => !tutorOnly || session.user.rol === 'tutor').map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
