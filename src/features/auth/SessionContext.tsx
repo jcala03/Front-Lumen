@@ -6,11 +6,29 @@ import {
   type ReactNode,
 } from 'react'
 import { getProfile, login as requestLogin, register as requestRegister } from '../../services/api/auth'
-import type { AuthUser, LoginRequest, RegisterRequest } from '../../types/auth'
+import type { AuthUser, LoginRequest, ProfileResponse, RegisterRequest } from '../../types/auth'
 import { SessionContext, type Session } from './session-context'
 
 type SessionProviderProps = {
   children: ReactNode
+}
+
+/** Decodifica el payload del JWT sin verificar la firma (solo para leer claims locales). */
+function decodeJwtClaims(token: string): ProfileResponse['usuario'] | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(json) as Record<string, unknown>
+    return {
+      id: (payload.id as number | string) ?? 0,
+      rol: (payload.rol as ProfileResponse['usuario']['rol']) ?? 'estudiante',
+      iat: payload.iat as number | undefined,
+      exp: payload.exp as number | undefined,
+    }
+  } catch {
+    return null
+  }
 }
 
 export function SessionProvider({ children }: SessionProviderProps) {
@@ -36,11 +54,23 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setSessionExpired(false)
     try {
       const response = await request()
-      const profile = await getProfile(response.token)
+
+      let claims: ProfileResponse['usuario']
+      try {
+        const profile = await getProfile(response.token)
+        claims = profile.usuario
+      } catch {
+        // El endpoint /api/auth/perfil puede no estar disponible;
+        // decodificamos el JWT localmente para obtener los claims.
+        const decoded = decodeJwtClaims(response.token)
+        if (!decoded) throw new Error('No se pudo verificar el token de sesión.')
+        claims = decoded
+      }
+
       setSession({
         token: response.token,
         user: response.usuario,
-        claims: profile.usuario,
+        claims,
       })
     } catch (error) {
       setSession(null)

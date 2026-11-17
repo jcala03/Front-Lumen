@@ -2,10 +2,15 @@ import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useSession } from '../../features/auth/useSession'
 
-const navigation = [
+const publicNav = [
   { to: '/', label: 'Inicio', end: true },
-  { to: '/tutores', label: 'Explorar tutores' },
-  { to: '/ubicaciones', label: 'Buscar ubicación' },
+  { to: '/tutores', label: 'Tutores' },
+  { to: '/ubicaciones', label: 'Ubicaciones' },
+]
+
+const authNav = [
+  { to: '/solicitudes', label: 'Solicitudes' },
+  { to: '/tutorias', label: 'Mis tutorías' },
 ]
 
 export function SiteHeader() {
@@ -46,7 +51,7 @@ export function SiteHeader() {
           id="primary-navigation"
           aria-label="Navegación principal"
         >
-          {navigation.map(({ to, label, end }) => (
+          {publicNav.map(({ to, label, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -57,11 +62,26 @@ export function SiteHeader() {
               {label}
             </NavLink>
           ))}
+
+          {session && authNav.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={closeMenu}
+              className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}
+            >
+              {label}
+            </NavLink>
+          ))}
+
           <div className="nav-actions">
             {session ? (
               <>
                 <span className="session-greeting">
                   Hola, <strong>{session.user.nombre}</strong>
+                  <span className="session-role-chip">
+                    {session.user.rol === 'tutor' ? 'Tutor' : 'Estudiante'}
+                  </span>
                 </span>
                 <button className="nav-link nav-logout" type="button" onClick={handleSignOut}>
                   Cerrar sesión

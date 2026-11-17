@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { StatusNotice } from '../../components/ui/StatusNotice'
+import { useSession } from '../auth/useSession'
 
 const values = [
   {
@@ -10,7 +10,7 @@ const values = [
   {
     number: '02',
     title: 'Conecta con personas',
-    text: 'Lumen está construyendo una comunidad donde compartir conocimiento importa.',
+    text: 'Publica una solicitud y recibe ofertas de tutores disponibles cerca de ti.',
   },
   {
     number: '03',
@@ -20,6 +20,8 @@ const values = [
 ]
 
 export function HomePage() {
+  const { session } = useSession()
+
   return (
     <>
       <section className="hero-section">
@@ -31,8 +33,19 @@ export function HomePage() {
               Lumen conecta estudiantes y tutores para que cada persona encuentre nuevas formas de aprender y enseñar.
             </p>
             <div className="hero-actions">
-              <Link className="button" to="/registro">Conoce Lumen <span aria-hidden="true">→</span></Link>
-              <Link className="text-link" to="/tutores">Explorar la plataforma</Link>
+              {session ? (
+                <>
+                  <Link className="button" to="/solicitudes">
+                    {session.user.rol === 'tutor' ? 'Ver solicitudes' : 'Mis solicitudes'} <span aria-hidden="true">→</span>
+                  </Link>
+                  <Link className="text-link" to="/tutorias">Mis tutorías</Link>
+                </>
+              ) : (
+                <>
+                  <Link className="button" to="/registro">Conoce Lumen <span aria-hidden="true">→</span></Link>
+                  <Link className="text-link" to="/tutores">Explorar la plataforma</Link>
+                </>
+              )}
             </div>
             <div className="hero-proof">
               <div className="avatar-stack" aria-hidden="true">
@@ -65,16 +78,19 @@ export function HomePage() {
       <section className="intro-section section-space">
         <div className="container intro-grid">
           <div>
-            <p className="eyebrow">Un comienzo con intención</p>
+            <p className="eyebrow">Una plataforma real</p>
             <h2>La educación crece cuando crecemos <span>en comunidad.</span></h2>
           </div>
           <div className="intro-aside">
             <p>
-              Estamos preparando un lugar para quienes quieren compartir lo que saben y para quienes tienen ganas de aprender.
+              Registra tu cuenta, publica solicitudes de tutoría y conecta con personas dispuestas a compartir lo que saben.
             </p>
-            <StatusNotice title="Autenticación disponible">
-              Puedes crear una cuenta o iniciar sesión. El catálogo de tutores todavía no forma parte de la API.
-            </StatusNotice>
+            <div className="feature-pills">
+              <span className="feature-pill">📋 Solicitudes de tutoría</span>
+              <span className="feature-pill">💬 Ofertas de tutores</span>
+              <span className="feature-pill">📅 Sesiones confirmadas</span>
+              <span className="feature-pill">📍 Búsqueda por ubicación</span>
+            </div>
           </div>
         </div>
       </section>
@@ -107,7 +123,9 @@ export function HomePage() {
             <p className="eyebrow">El futuro se aprende</p>
             <h2>Todo gran camino empieza con una pregunta.</h2>
           </div>
-          <Link className="button button-light" to="/registro">Da el primer paso <span aria-hidden="true">→</span></Link>
+          <Link className="button button-light" to={session ? '/solicitudes' : '/registro'}>
+            {session ? 'Ir a solicitudes' : 'Da el primer paso'} <span aria-hidden="true">→</span>
+          </Link>
           <span className="closing-spark" aria-hidden="true">✳</span>
         </div>
       </section>
