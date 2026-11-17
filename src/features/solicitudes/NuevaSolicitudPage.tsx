@@ -8,13 +8,13 @@ import { Select } from '../../components/ui/Select'
 import { ApiError } from '../../services/api/client'
 import { getMaterias, type Materia } from '../../services/api/materias'
 import { crearSolicitud } from '../../services/api/solicitudes'
-import type { Modalidad, SolicitudTipo } from '../../types/tutorias'
+import type { Modalidad, NivelEducativo, SolicitudTipo } from '../../types/tutorias'
 import { useSession } from '../auth/useSession'
 
 type FormValues = {
   materia_id: string
   tema_especifico: string
-  nivel_educativo: string
+  nivel_educativo: NivelEducativo | ''
   modalidad: Modalidad | ''
   duracion_horas: string
   tipo: SolicitudTipo
@@ -86,6 +86,9 @@ export function NuevaSolicitudPage() {
     if (!materias?.some(({ id }) => String(id) === values.materia_id)) e.materia_id = 'Selecciona una materia.'
     if (!values.nivel_educativo) e.nivel_educativo = 'Selecciona el nivel educativo.'
     if (!values.modalidad) e.modalidad = 'Selecciona la modalidad.'
+    if (values.modalidad === 'presencial' && !values.ciudad.trim()) {
+      e.ciudad = 'Indica la ciudad para la tutoría presencial.'
+    }
     const duracion = Number(values.duracion_horas)
     if (!Number.isFinite(duracion) || duracion <= 0) {
       e.duracion_horas = 'Indica la duración en horas.'
@@ -112,7 +115,7 @@ export function NuevaSolicitudPage() {
       await crearSolicitud(
         {
           materia_id: values.materia_id,
-          nivel_educativo: values.nivel_educativo,
+          nivel_educativo: values.nivel_educativo as NivelEducativo,
           modalidad: values.modalidad as Modalidad,
           tipo: values.tipo,
           duracion_horas: Number(values.duracion_horas),
@@ -216,7 +219,7 @@ export function NuevaSolicitudPage() {
                 >
                   <option value="">Selecciona el nivel</option>
                   <option value="pregrado">Pregrado</option>
-                  <option value="bachillerato">Bachillerato</option>
+                  <option value="colegio">Colegio (bachillerato)</option>
                   <option value="posgrado">Posgrado</option>
                 </Select>
               </FormField>
@@ -263,10 +266,18 @@ export function NuevaSolicitudPage() {
                   onChange={(e) => update('presupuesto_hora', e.target.value)}
                 />
               </FormField>
-              <FormField id="ns-ciudad" label="Ciudad" optional>
+              <FormField
+                id="ns-ciudad"
+                label="Ciudad"
+                required={values.modalidad === 'presencial'}
+                optional={values.modalidad !== 'presencial'}
+                error={errors.ciudad}
+              >
                 <Input
                   id="ns-ciudad"
                   autoComplete="address-level2"
+                  required={values.modalidad === 'presencial'}
+                  error={Boolean(errors.ciudad)}
                   value={values.ciudad}
                   onChange={(e) => update('ciudad', e.target.value)}
                 />

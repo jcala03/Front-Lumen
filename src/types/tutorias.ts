@@ -3,11 +3,12 @@ export type Id = number | string
 type Numeric = number | string
 
 export type Modalidad = 'presencial' | 'virtual'
+export type NivelEducativo = 'colegio' | 'pregrado' | 'posgrado'
 export type SolicitudTipo = 'inmediata' | 'programada'
 
 export type SolicitudRequest = {
   materia_id: Id
-  nivel_educativo: string
+  nivel_educativo: NivelEducativo
   modalidad: Modalidad
   tipo: SolicitudTipo
   duracion_horas: number
